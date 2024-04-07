@@ -8,8 +8,8 @@ import ReactFlow, {
 } from "reactflow";
 import "./App.css";
 import "reactflow/dist/style.css";
-import QuestionModule from "./QuestionModule";
-import Modal from "./Modal";
+import QuestionModule from "./Components/QuestionModule";
+import Modal from "./Components/Modal";
 import { questionnaire } from "./data/questionnaire";
 
 function getDefaultNodes() {
@@ -22,6 +22,7 @@ function getDefaultNodes() {
       position: { x: initialXPosition * questionIndex, y: 0 },
     })
   );
+
   return defaultNodes;
 }
 
@@ -36,46 +37,63 @@ const nodeTypes = {
   questionModule: QuestionModule,
 };
 
-const savedEdges = JSON.parse(localStorage.getItem("edges"));
-const savedNodes = JSON.parse(localStorage.getItem("nodes"));
-
 function App() {
-  const [nodes, setNodes] = useState(savedNodes ?? defaultNodes);
-  const [edges, setEdges] = useState(savedEdges ?? defaultEdges);
+  const [nodes, setNodes] = useState(defaultNodes);
+  const [edges, setEdges] = useState(defaultEdges);
 
-  const onNodesChange = useCallback(
-    (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
-    []
+  const connectedNodes = new Set(); // Set to store IDs of connected nodes
+
+  // Iterate through edges to collect connected node IDs
+  edges.forEach((edge) => {
+    connectedNodes.add(edge.source);
+    connectedNodes.add(edge.target);
+  });
+
+  // Filter nodes to include only connected nodes
+  const connectedNodesData = nodes.filter((node) =>
+    connectedNodes.has(node.id)
   );
 
-  const onEdgesChange = useCallback(
-    (changes) => setEdges((eds) => applyEdgeChanges(changes, eds)),
-    []
-  );
+  const updateNodeOrder = useCallback(() => {
+    const orderedNodes = connectedNodesData
+      .map((node) => ({
+        id: node.id,
+        position: node.position,
+        order_number: 0, // Initialize order number to be updated
+      }))
+      .sort((a, b) => {
+        // Sort nodes based on their x-coordinate position
+        return a.position.x - b.position.x;
+      });
 
-  const onConnect = useCallback(
-    (params) => setEdges((eds) => addEdge(params, eds)),
-    []
-  );
-
-  useEffect(() => {
-    const newNodes = [...nodes];
-
-    edges.forEach((edge, edgeIndex) => {
-      const nodeSource = newNodes.find((node) => node.id === edge.source);
-      const nodeTarget = newNodes.find((node) => node.id === edge.target);
-      nodeSource.data.order_number = edgeIndex + 1;
-      nodeTarget.data.order_number = nodeSource.order_number + 1;
+    // Update the order_number based on the sorted list
+    orderedNodes.forEach((node, index) => {
+      const updatedNode = nodes.find((n) => n.id === node.id);
+      updatedNode.data.order_number = index + 1;
     });
 
-    setNodes(newNodes);
-    localStorage.setItem("nodes", JSON.stringify(newNodes));
-    localStorage.setItem("edges", JSON.stringify(edges));
-  }, [edges]);
-
-  useEffect(() => {
-    localStorage.setItem("nodes", JSON.stringify(nodes));
+    // Update the state with the updated nodes
+    setNodes([...nodes]);
   }, [nodes]);
+
+  const onNodeDragStop = (event, node) => {
+    console.log(node);
+    updateNodeOrder();
+  };
+
+  const onNodesChange = useCallback((changes) => {
+    setNodes((nds) => applyNodeChanges(changes, nds));
+  }, []);
+
+  const onEdgesChange = useCallback((changes) => {
+    setEdges((eds) => applyEdgeChanges(changes, eds));
+  }, []);
+
+  const onConnect = (params) => {
+    const updatedEdges = addEdge(params, edges);
+    setEdges(updatedEdges);
+    updateNodeOrder();
+  };
 
   return (
     <div
@@ -88,8 +106,10 @@ function App() {
         onNodesChange={onNodesChange}
         edges={edges}
         onEdgesChange={onEdgesChange}
+        onNodeDragStop={onNodeDragStop}
         onEdgeClick={(_, { id }) => {
           setEdges((edges) => edges.filter((e) => e.id !== id));
+          updateNodeOrder();
         }}
         onConnect={onConnect}
         nodeTypes={nodeTypes}

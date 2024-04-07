@@ -1,6 +1,6 @@
 import React, { useContext, useEffect } from "react";
 
-import { ModalContext } from "./context/ModalContext";
+import { ModalContext } from "../context/ModalContext";
 
 const Modal = ({ width = "", className = "" }) => {
   const { isModalActive, toggleModal, size, modalContent } =

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Position } from "reactflow";
 import Question from "./Question";
-import { QuestionType } from "./global.defs";
+import { QuestionType } from "../global.defs";
 
 export type NodeProps<T = any> = {
   id: string;

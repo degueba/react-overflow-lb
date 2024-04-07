@@ -75,7 +75,7 @@ export const questionnaire = {
       status: "active",
       created_at: "2021-12-10T17:40:40.970Z",
       questionnaire_id: "fef53505-2023-4be4-8dda-592a3d3f334c",
-      order_number: 4,
+      order_number: 3,
       has_additional: false,
       additional_info: "",
       is_stop_intake: false,
