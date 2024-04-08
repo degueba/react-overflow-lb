@@ -43,18 +43,23 @@ function App() {
 
   const connectedNodes = new Set(); // Set to store IDs of connected nodes
 
-  // Iterate through edges to collect connected node IDs
-  edges.forEach((edge) => {
-    connectedNodes.add(edge.source);
-    connectedNodes.add(edge.target);
-  });
-
-  // Filter nodes to include only connected nodes
-  const connectedNodesData = nodes.filter((node) =>
-    connectedNodes.has(node.id)
-  );
+  const removeEdge = (id) => {
+    setEdges((edges) => edges.filter((e) => e.id !== id));
+    updateNodeOrder();
+  };
 
   const updateNodeOrder = useCallback(() => {
+    // Iterate through edges to collect connected node IDs
+    edges.forEach((edge) => {
+      connectedNodes.add(edge.source);
+      connectedNodes.add(edge.target);
+    });
+
+    // Filter nodes to include only connected nodes
+    const connectedNodesData = nodes.filter((node) =>
+      connectedNodes.has(node.id)
+    );
+
     const orderedNodes = connectedNodesData
       .map((node) => ({
         id: node.id,
@@ -77,8 +82,54 @@ function App() {
   }, [nodes]);
 
   const onNodeDragStop = (event, node) => {
-    console.log(node);
     updateNodeOrder();
+  };
+
+  const getRelativePositionDifference = (draggedNode, connectedNode) => {
+    return {
+      relativeX: draggedNode.position.x - connectedNode.position.x,
+      relativeY: draggedNode.position.y - connectedNode.position.y,
+    };
+  };
+
+  const onNodeDrag = (event, draggedNode) => {
+    const connectedEdge = edges.find(
+      (edge) => edge.source === draggedNode.id || edge.target === draggedNode.id
+    );
+
+    if (!connectedEdge) {
+      console.error("No connected edge found");
+      return;
+    }
+
+    // Find the connected node on the left
+    const connectedNodeId =
+      connectedEdge.source === draggedNode.id
+        ? connectedEdge.target
+        : connectedEdge.source;
+    const connectedNode = nodes.find(
+      (element) => element.id === connectedNodeId
+    );
+
+    if (!connectedNode) {
+      console.error("Connected node not found");
+      return;
+    }
+
+    // Calculate the relative position difference between the connected nodes
+    const relativePositionDifference = getRelativePositionDifference(
+      draggedNode,
+      connectedNode
+    );
+
+    console.log(
+      "Relative position difference between connected nodes:",
+      relativePositionDifference
+    );
+
+    if (relativePositionDifference.relativeX <= 0) {
+      removeEdge(connectedEdge.id);
+    }
   };
 
   const onNodesChange = useCallback((changes) => {
@@ -107,9 +158,9 @@ function App() {
         edges={edges}
         onEdgesChange={onEdgesChange}
         onNodeDragStop={onNodeDragStop}
+        onNodeDrag={onNodeDrag}
         onEdgeClick={(_, { id }) => {
-          setEdges((edges) => edges.filter((e) => e.id !== id));
-          updateNodeOrder();
+          removeEdge(id);
         }}
         onConnect={onConnect}
         nodeTypes={nodeTypes}
